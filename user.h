@@ -23,6 +23,9 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int cmd(char*);
+int exelink(char*);
+int getpids(int*);
 
 // ulib.c
 int stat(char*, struct stat*);

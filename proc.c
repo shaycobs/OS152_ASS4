@@ -20,6 +20,34 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+void strcopy(char* des, char* src){
+  int i=0;
+  for(i=0; src[i] != '\0'; i++)
+    des[i] = src[i];
+  des[i] = '\0';
+}
+
+void
+cmdline(char* cmd) {
+  strcopy(proc->cmdline, cmd);
+}
+
+void
+exelink(char* link) {
+  strcopy(proc->exe, link);
+}
+
+void
+getpids(int* pids) {
+  int i = 0;
+  struct proc *p;
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    pids[i] = p->pid;
+    i++;
+  }
+}
+
 void
 pinit(void)
 {

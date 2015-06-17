@@ -18,6 +18,9 @@ exec(char *path, char **argv)
   struct proghdr ph;
   pde_t *pgdir, *oldpgdir;
 
+  /* Save the executable link */
+  exelink(path);
+
   begin_op();
   if((ip = namei(path)) == 0){
     end_op();

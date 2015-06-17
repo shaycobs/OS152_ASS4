@@ -21,6 +21,45 @@ sys_exit(void)
 }
 
 int
+sys_cmd(void)
+{
+  char *cmd;
+
+  if (argptr(0, (char**)&cmd, sizeof(char)) < 0){
+    return -1;
+  }
+
+  cmdline(cmd);
+  return 0;
+}
+
+int
+sys_exelink(void)
+{
+  char *link;
+
+  if (argptr(0, (char**)&link, sizeof(char)) < 0){
+    return -1;
+  }
+
+  exelink(link);
+  return 0;
+}
+
+int
+sys_getpids(void)
+{
+  int *pids;
+
+  if (argptr(0, (char**)&pids, sizeof(char)) < 0){
+    return -1;
+  }
+
+  getpids(pids);
+  return 0;
+}
+
+int
 sys_wait(void)
 {
   return wait();

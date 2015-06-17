@@ -118,6 +118,9 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+void			cmdline(char*);
+void			exelink(char*);
+void			getpids(int*);
 
 // procfs.c
 void 			procfsinit(void);
