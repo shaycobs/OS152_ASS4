@@ -121,6 +121,10 @@ void            yield(void);
 void			cmdline(char*);
 void			exelink(char*);
 void			getpids(int*);
+void			getcmdline(int, char*);
+void			getexe(int, char*);
+void 			getcwd(int, char*);
+void 			getstatus(int, char*);
 
 // procfs.c
 void 			procfsinit(void);

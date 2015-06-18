@@ -33,8 +33,70 @@ cmdline(char* cmd) {
 }
 
 void
+getcmdline(int pid, char* cmd) {
+  struct proc *p;
+
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if (p->pid == pid) {
+      strcopy(cmd, p->cmdline);
+      break;
+    }
+  }
+
+  release(&ptable.lock);
+}
+
+void
 exelink(char* link) {
   strcopy(proc->exe, link);
+}
+
+void
+getexe(int pid, char* exe) {
+  struct proc *p;
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if (p->pid == pid) {
+      strcopy(exe, p->exe);
+      break;
+    }
+  }
+}
+
+void
+getcwd(int pid, char* cwd) {
+  struct proc *p;
+
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if (p->pid == pid) {
+      cwd = (char*)p->cwd;
+      break;
+    }
+  }
+
+  release(&ptable.lock);
+}
+
+void
+getstatus(int pid, char* status) {
+  struct proc *p;
+
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if (p->pid == pid) {
+      /*switch(p->state) {
+        case 
+      }
+      */
+    }
+  }
+
+  release(&ptable.lock);
 }
 
 void
@@ -42,10 +104,19 @@ getpids(int* pids) {
   int i = 0;
   struct proc *p;
 
+  acquire(&ptable.lock);
+
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    pids[i] = p->pid;
+    if (p->state != UNUSED) {
+      pids[i] = p->pid;
+    } else {
+      pids[i] = 0;
+    }
+
     i++;
   }
+
+  release(&ptable.lock);
 }
 
 void
@@ -181,6 +252,7 @@ fork(void)
     if(proc->ofile[i])
       np->ofile[i] = filedup(proc->ofile[i]);
   np->cwd = idup(proc->cwd);
+  strcopy(np->cmdline, proc->cmdline);
 
   safestrcpy(np->name, proc->name, sizeof(proc->name));
  

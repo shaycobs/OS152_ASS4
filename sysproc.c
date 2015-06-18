@@ -60,6 +60,74 @@ sys_getpids(void)
 }
 
 int
+sys_getcmdline(void)
+{
+  int pid;
+  char *cmd;
+
+  if(argint(0, &pid) < 0)
+    return -1;
+
+  if (argptr(1, (char**)&cmd, sizeof(char)) < 0){
+    return -1;
+  }
+
+  getcmdline(pid, cmd);
+  return 0;
+}
+
+int
+sys_getexe(void)
+{
+  int pid;
+  char *exe;
+
+  if(argint(0, &pid) < 0)
+    return -1;
+
+  if (argptr(1, (char**)&exe, sizeof(char)) < 0){
+    return -1;
+  }
+
+  getexe(pid, exe);
+  return 0;
+}
+
+int
+sys_getcwd(void)
+{
+  int pid;
+  char *cwd;
+
+  if(argint(0, &pid) < 0)
+    return -1;
+
+  if (argptr(1, (char**)&cwd, sizeof(char)) < 0){
+    return -1;
+  }
+
+  getcwd(pid, cwd);
+  return 0;
+}
+
+int
+sys_getstatus(void)
+{
+  int pid;
+  char *status;
+
+  if(argint(0, &pid) < 0)
+    return -1;
+
+  if (argptr(1, (char**)&status, sizeof(char)) < 0){
+    return -1;
+  }
+
+  getstatus(pid, status);
+  return 0;
+}
+
+int
 sys_wait(void)
 {
   return wait();

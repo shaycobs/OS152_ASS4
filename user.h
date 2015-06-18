@@ -26,6 +26,10 @@ int uptime(void);
 int cmd(char*);
 int exelink(char*);
 int getpids(int*);
+int getcmdline(int, char*);
+int getexe(int, char*);
+int getcwd(int, char*);
+int getstatus(int, char*);
 
 // ulib.c
 int stat(char*, struct stat*);

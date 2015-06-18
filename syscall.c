@@ -101,6 +101,10 @@ extern int sys_uptime(void);
 extern int sys_cmd(void);
 extern int sys_exelink(void);
 extern int sys_getpids(void);
+extern int sys_getcmdline(void);
+extern int sys_getexe(void);
+extern int sys_getcwd(void);
+extern int sys_getstatus(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -127,6 +131,10 @@ static int (*syscalls[])(void) = {
 [SYS_cmd]     sys_cmd,
 [SYS_exelink] sys_exelink,
 [SYS_getpids] sys_getpids,
+[SYS_getcmdline] sys_getcmdline,
+[SYS_getexe]  sys_getexe,
+[SYS_getcwd]  sys_getcwd,
+[SYS_getstatus]  sys_getstatus,
 };
 
 void

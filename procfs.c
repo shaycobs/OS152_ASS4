@@ -14,15 +14,39 @@
 #define PROCDIR 	0
 #define PIDDIR  	1
 #define FILE 		2
-#define INUMADD  	10000
+#define INUMPROC  	10000
+#define INUMPID  	20000
+#define INUMFILE  	30000
+#define DIRENTSIZE	500
+
+enum pidfiles { CMDLINE, CWD, EXE, FDINFO, STATUS };
 
 static struct inode procfs[NPROC];
-//static struct inode pidinodes[5];
+static struct inode pidinodes[NPROC][5];
+static struct dirent dirents[DIRENTSIZE];
+
+void
+getFileName(int inum, char* name) {
+	int i;
+
+	for (i = 0; i < DIRENTSIZE; i++) {
+		if (dirents[i].inum == inum) {
+			strncpy(name, dirents[i].name, DIRSIZ);
+			break;
+		}
+	}
+}
 
 void
 getPidName(int pid, char* buf) {
 	int i = 0;
 	int tempPid = pid;
+
+	for (i = 0; i < DIRSIZ; i++) {
+		buf[i] = 0;
+	}
+
+	i = 0;
 
 	while (pid != 0) {
 		pid = pid / 10;
@@ -56,19 +80,33 @@ procfsisdir(struct inode *ip) {
 
 void 
 procfsiread(struct inode* dp, struct inode *ip) {
-	/*int i;
+	int i, j;
 
 	for (i = 0; i < NPROC; i++) {
 		if (procfs[i].inum == ip->inum) {
-			ip->dev = procfs[i].dev;
-			ip->ref = procfs[i].ref;
-			ip->flags = procfs[i].flags;
-			ip->type = procfs[i].type;
-			ip->major = procfs[i].major;
-			ip->minor = procfs[i].minor;
-			ip->size = procfs[i].size;
+			ip->dev 	= procfs[i].dev;
+			ip->flags 	= procfs[i].flags;
+			ip->type 	= procfs[i].type;
+			ip->major 	= procfs[i].major;
+			ip->minor 	= procfs[i].minor;
+			ip->size 	= procfs[i].size;
+
+			break;
 		}
-	}*/
+
+		for (j = 0; j < 5; j++) {
+			if (pidinodes[i][j].inum == ip->inum) {
+				ip->dev 	= pidinodes[i][j].dev;
+				ip->flags 	= pidinodes[i][j].flags;
+				ip->type 	= pidinodes[i][j].type;
+				ip->major 	= pidinodes[i][j].major;
+				ip->minor 	= pidinodes[i][j].minor;
+				ip->size 	= pidinodes[i][j].size;
+
+				break;
+			}
+		}
+	}
 }
 
 int
@@ -76,21 +114,25 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 	int pids[NPROC];
 	int i;
 	int nonZeroPids = 0;
+	int j;
+	int ret = 0;
+	int direntindex = 0;
+	char cmdline_str[14] 	= "cmdline";
+	char cwd_str[14] 		= "cwd";
+	char exe_str[14] 		= "exe";
+	char fdinfo_str[14]		= "fdinfo";
+	char status_str[14] 	= "status";
+	struct inode cwdinode;
+	//struct dirent cwddirent;
 
-	/*cprintf("read off: %d\n", off);
-	cprintf("size of dirent: %d\n", sizeof(struct dirent));*/
-
+	n = sizeof(struct dirent);
 	if (ip->minor == PROCDIR) {
 		cleanInodes();
 		getpids(pids);
-		n = sizeof(struct dirent);
 
 		for (i = 0; i < NPROC; i++) {
-			//cprintf("read pid: %d\n", pids[i]);
-
 			procfs[i].dev = PROCFS;
-			procfs[i].inum = pids[i] + INUMADD;
-			procfs[i].ref = 0;
+			procfs[i].inum = pids[i] + INUMPROC;
 			procfs[i].flags = 0 | I_VALID;
 			procfs[i].type = T_DEV;
 			procfs[i].major = PROCFS;
@@ -100,29 +142,95 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 
 			if (pids[i] != 0)
 				nonZeroPids++;
-
-			//cprintf("read name: %s\n", dirents[i].name);
 		}
-
-		ip->size = nonZeroPids * n;
 		ip->nlink++;
+
 		i = off / n;
-/*
-		cprintf("non zero: %d\n",nonZeroPids);
-		cprintf("ip size: %d\n",ip->size);
-		cprintf("i: %d\n",i);
-		*/
-		((struct dirent*)dst)->inum = procfs[i].inum;
-		getPidName(pids[i], ((struct dirent*)dst)->name);
 
-		/*cprintf("inum: %d\n",((struct dirent*)dst)->inum);
-		cprintf("pid: %d\n", pids[i]);
-		cprintf("name: %s\n",((struct dirent*)dst)->name);*/
+		if (i < nonZeroPids) {
+			((struct dirent*)dst)->inum = procfs[i].inum;
+			getPidName(pids[i], ((struct dirent*)dst)->name);
+			ret = n;
+		}
 	} else if (ip->minor == PIDDIR) {
+		for (i = 0; i < NPROC; i++) {
+			if (ip->inum == procfs[i].inum) {
+				for (j = 0; j < 5; j++) {
+					pidinodes[i][j].dev = PROCFS;
+					pidinodes[i][j].inum = (procfs[i].inum - INUMPROC)*10 + INUMPID + j;
+					pidinodes[i][j].flags = 0 | I_VALID;
+					pidinodes[i][j].type = T_DEV;
+					pidinodes[i][j].major = PROCFS;
+					pidinodes[i][j].minor = FILE;
+					pidinodes[i][j].size = 5 * n;
+					pidinodes[i][j].nlink = 0;
+				}
 
+				ip->nlink++;
+				j = off / n;
+
+				if (j < 5) {
+					((struct dirent*)dst)->inum = pidinodes[i][j].inum;
+
+					switch(j) {
+						case CMDLINE:
+							strncpy(((struct dirent*)dst)->name, cmdline_str, DIRSIZ);
+							break;
+						case CWD:
+							strncpy(((struct dirent*)dst)->name, cwd_str, DIRSIZ);
+							break;
+						case EXE:
+							strncpy(((struct dirent*)dst)->name, exe_str, DIRSIZ);
+							break;
+						case FDINFO:
+							strncpy(((struct dirent*)dst)->name, fdinfo_str, DIRSIZ);
+							break;
+						case STATUS:
+							strncpy(((struct dirent*)dst)->name, status_str, DIRSIZ);
+					}
+
+					dirents[direntindex].inum = ((struct dirent*)dst)->inum;
+					strncpy(dirents[direntindex].name, ((struct dirent*)dst)->name, DIRSIZ);
+
+					ret = n;
+				}
+			}
+		}
+	} else if (ip->minor == FILE) {
+		char filename[14];
+		char file[500];
+		int pid;
+		int filelength;
+
+		getFileName(ip->inum, filename);
+		pid = (ip->inum - INUMPID)/10;
+
+		if (strncmp(filename, cmdline_str, DIRSIZ) == 0) {
+			getcmdline(pid, file);
+
+			filelength = strlen(file);
+			if (off < filelength) {
+				strncpy(dst, file+off, n);
+				ret = n;
+			}
+		} else if (strncmp(filename, cwd_str, DIRSIZ) == 0) {
+			getcwd(pid, (char*)&cwdinode);
+			cprintf("inum: %d\n", cwdinode.inum);
+			//strncpy(dst, ((char*)cwddirent) + off, n);
+		} else if (strncmp(filename, exe_str, DIRSIZ) == 0) {
+		} else if (strncmp(filename, fdinfo_str, DIRSIZ) == 0) {
+		} else if (strncmp(filename, status_str, DIRSIZ) == 0) {
+			getcmdline(pid, file);
+
+			filelength = strlen(file);
+			if (off < filelength) {
+				strncpy(dst, file+off, n);
+				ret = n;
+			}
+		}
 	}
 
-  	return (off + n);
+  	return (ret);
 }
 
 int
