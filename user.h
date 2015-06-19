@@ -28,7 +28,7 @@ int exelink(char*);
 int getpids(int*);
 int getcmdline(int, char*);
 int getexe(int, char*);
-int getcwd(int, char*);
+int getcwd(int);
 int getstatus(int, char*);
 
 // ulib.c

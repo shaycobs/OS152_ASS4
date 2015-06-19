@@ -97,17 +97,11 @@ int
 sys_getcwd(void)
 {
   int pid;
-  char *cwd;
 
   if(argint(0, &pid) < 0)
     return -1;
 
-  if (argptr(1, (char**)&cwd, sizeof(char)) < 0){
-    return -1;
-  }
-
-  getcwd(pid, cwd);
-  return 0;
+  return getcwd(pid);
 }
 
 int

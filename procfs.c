@@ -122,7 +122,10 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 	char exe_str[14] 		= "exe";
 	char fdinfo_str[14]		= "fdinfo";
 	char status_str[14] 	= "status";
-	struct inode cwdinode;
+	char filename[14];
+	char file[500];
+	int pid;
+	int filelength;
 	//struct dirent cwddirent;
 
 	n = sizeof(struct dirent);
@@ -197,11 +200,6 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 			}
 		}
 	} else if (ip->minor == FILE) {
-		char filename[14];
-		char file[500];
-		int pid;
-		int filelength;
-
 		getFileName(ip->inum, filename);
 		pid = (ip->inum - INUMPID)/10;
 
@@ -214,13 +212,13 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 				ret = n;
 			}
 		} else if (strncmp(filename, cwd_str, DIRSIZ) == 0) {
-			getcwd(pid, (char*)&cwdinode);
-			cprintf("inum: %d\n", cwdinode.inum);
-			//strncpy(dst, ((char*)cwddirent) + off, n);
+			((struct dirent*)dst)->inum = getcwd(pid);
+			strncpy(((struct dirent*)dst)->name, cwd_str, DIRSIZ);
 		} else if (strncmp(filename, exe_str, DIRSIZ) == 0) {
 		} else if (strncmp(filename, fdinfo_str, DIRSIZ) == 0) {
 		} else if (strncmp(filename, status_str, DIRSIZ) == 0) {
-			getcmdline(pid, file);
+			getstatus(pid, file);
+			//cprintf("%s\n", file);
 
 			filelength = strlen(file);
 			if (off < filelength) {

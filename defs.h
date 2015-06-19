@@ -123,7 +123,7 @@ void			exelink(char*);
 void			getpids(int*);
 void			getcmdline(int, char*);
 void			getexe(int, char*);
-void 			getcwd(int, char*);
+int 			getcwd(int);
 void 			getstatus(int, char*);
 
 // procfs.c

@@ -6,6 +6,8 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "fs.h"
+#include "file.h"
 
 struct {
   struct spinlock lock;
@@ -20,11 +22,47 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+void
+intToChararray(int num, char* buf) {
+  int i = 0;
+  int tempNum = num;
+
+  for (i = 0; i < DIRSIZ; i++) {
+    buf[i] = 0;
+  }
+
+  i = 0;
+
+  while (num != 0) {
+    num = num / 10;
+    i++;
+  }
+  i--;
+
+  num = tempNum;
+
+  while (i >= 0) {
+    buf[i] = (num % 10) + 48;
+    num = num / 10;
+    i--;
+  }
+}
+
 void strcopy(char* des, char* src){
   int i=0;
   for(i=0; src[i] != '\0'; i++)
     des[i] = src[i];
   des[i] = '\0';
+}
+
+void addToCharArray(char* dst, char* src, int from, int size) {
+  int i;
+  int j = 0;
+  for(i = from; i < from + size; i++) {
+    dst[i] = src[j];
+    j++;
+  }
+  //dst[++i] = '\0';
 }
 
 void
@@ -65,34 +103,72 @@ getexe(int pid, char* exe) {
   }
 }
 
-void
-getcwd(int pid, char* cwd) {
+int
+getcwd(int pid) {
   struct proc *p;
+  int ret = 0;
 
   acquire(&ptable.lock);
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if (p->pid == pid) {
-      cwd = (char*)p->cwd;
+      p->cwd->flags = p->cwd->flags & !I_VALID;
+      ret = p->cwd->inum;
       break;
     }
   }
 
   release(&ptable.lock);
+
+  return ret;
 }
 
 void
 getstatus(int pid, char* status) {
   struct proc *p;
+  char unused[10] = "UNUSED\n";
+  char embryo[10] = "EMBRYO\n";
+  char sleeping[10] = "SLEEPING\n";
+  char runnable[10] = "RUNNABLE\n";
+  char running[10] = "RUNNING\n";
+  char zombie[10] = "ZOMBIE\n";
+  char runstate[21] = "Process run state: ";
+  char memory[23] = "Process memory usage: ";
+  char buf[DIRSIZ];
 
   acquire(&ptable.lock);
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if (p->pid == pid) {
-      /*switch(p->state) {
-        case 
+      addToCharArray(status, runstate, 0, 21);
+      cprintf("%s\n", status);
+      switch(p->state) {
+        case UNUSED:
+          addToCharArray(status, unused, 21, 10);
+          break;
+        case EMBRYO:
+          addToCharArray(status, embryo, 21, 10);
+          break;
+        case SLEEPING:
+          addToCharArray(status, sleeping, 21, 10);
+          break;
+        case RUNNABLE:
+          addToCharArray(status, runnable, 21, 10);
+          break;
+        case RUNNING:
+          addToCharArray(status, running, 21, 10);
+          break;
+        case ZOMBIE:
+          addToCharArray(status, zombie, 21, 10);
+          break;
       }
-      */
+      cprintf("%s\n", status);
+      
+      addToCharArray(status, memory, 31, 23);
+      cprintf("%s\n", status);
+      intToChararray(p->sz, buf);
+      addToCharArray(status, buf, 54, DIRSIZ);
+      cprintf("%s\n", status);
     }
   }
 
