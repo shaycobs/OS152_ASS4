@@ -27,3 +27,5 @@
 #define SYS_getexe		26
 #define SYS_getcwd		27
 #define SYS_getstatus	28
+#define SYS_getfds		29
+#define SYS_getfdinfo	30

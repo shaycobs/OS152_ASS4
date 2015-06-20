@@ -182,6 +182,76 @@ getstatus(int pid, char* status) {
 }
 
 void
+getfds(int pid, int *fds) {
+  struct proc *p;
+  int fd;
+
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if (p->pid == pid) {
+      for (fd = 0; fd < NOFILE; fd++) {
+        if (p->ofile[fd]) {
+          fds[fd] = fd;
+        } else {
+          fds[fd] = -1;
+        }
+      }
+
+      release(&ptable.lock);
+      return;
+    }
+  }
+
+  release(&ptable.lock);
+}
+
+void
+getfdinfo(int pid, int fd, char* info) {
+  struct proc *p;
+  char buf[DIRSIZ];
+  int i;
+  char pipe[5] = "PIPE ";
+  char node[5] = "NODE ";
+  char none[5] = "NONE ";
+
+
+  for (i = 0; i < 12; i++) {
+    info[i] = 32;
+  }
+
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if (p->pid == pid) {
+      switch(p->ofile[fd]->type) {
+        case FD_PIPE:
+          addToCharArray(info, pipe, 0, 5);
+          break;
+
+        case FD_INODE:
+          addToCharArray(info, node, 0, 5);
+          break;
+
+        default:
+          addToCharArray(info, none, 0, 5);
+      }
+
+      intToChararray(p->ofile[fd]->off, buf);
+      addToCharArray(info, buf, 6, DIRSIZ);
+
+      info[8] = p->ofile[fd]->readable;
+      info[10] = p->ofile[fd]->writable;
+
+      release(&ptable.lock);
+      return;
+    }
+  }
+
+  release(&ptable.lock);
+}
+
+void
 getpids(int* pids) {
   int i = 0;
   struct proc *p;

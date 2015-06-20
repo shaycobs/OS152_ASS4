@@ -125,6 +125,8 @@ void			getcmdline(int, char*);
 void			getexe(int, char*);
 int 			getcwd(int);
 void 			getstatus(int, char*);
+void 			getfds(int, int*);
+void 			getfdinfo(int, int, char*);
 
 // procfs.c
 void 			procfsinit(void);

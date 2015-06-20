@@ -122,6 +122,44 @@ sys_getstatus(void)
 }
 
 int
+sys_getfdinfo(void)
+{
+  int pid;
+  int fd;
+  char *info;
+
+  if(argint(0, &pid) < 0)
+    return -1;
+
+  if(argint(1, &fd) < 0)
+    return -1;
+
+  if (argptr(2, (char**)&info, sizeof(char)) < 0){
+    return -1;
+  }
+
+  getfdinfo(pid, fd, info);
+  return 0;
+}
+
+int
+sys_getfds(void)
+{
+  int pid;
+  int *fds;
+
+  if(argint(0, &pid) < 0)
+    return -1;
+
+  if (argptr(1, (char**)&fds, sizeof(char)) < 0){
+    return -1;
+  }
+
+  getfds(pid, fds);
+  return 0;
+}
+
+int
 sys_wait(void)
 {
   return wait();

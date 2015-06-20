@@ -105,6 +105,8 @@ extern int sys_getcmdline(void);
 extern int sys_getexe(void);
 extern int sys_getcwd(void);
 extern int sys_getstatus(void);
+extern int sys_getfds(void);
+extern int sys_getfdinfo(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -135,6 +137,8 @@ static int (*syscalls[])(void) = {
 [SYS_getexe]  sys_getexe,
 [SYS_getcwd]  sys_getcwd,
 [SYS_getstatus]  sys_getstatus,
+[SYS_getfds]  sys_getfds,
+[SYS_getfds]  sys_getfdinfo,
 };
 
 void

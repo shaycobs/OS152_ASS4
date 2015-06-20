@@ -30,6 +30,8 @@ int getcmdline(int, char*);
 int getexe(int, char*);
 int getcwd(int);
 int getstatus(int, char*);
+int getfds(int, int*);
+int getfdinfo(int, int, char*);
 
 // ulib.c
 int stat(char*, struct stat*);
