@@ -256,8 +256,6 @@ getfdinfo(int pid, int fd, char* info) {
 
       info[10 + strlen(buf)] = '\n';
       info[11 + strlen(buf)] = '\0';
-      //addToCharArray(info, &p->ofile[fd]->readable, 7 + strlen(buf), 1);
-      //addToCharArray(info, &p->ofile[fd]->writable, 9 + strlen(buf), 1);
 
       release(&ptable.lock);
       return;

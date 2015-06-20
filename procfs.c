@@ -97,6 +97,7 @@ procfsiread(struct inode* dp, struct inode *ip) {
 	char exepath[100];
 
 	for (i = 0; i < NPROC; i++) {
+		// Copy proc dir inum
 		if (procfs[i].inum == ip->inum) {
 			ip->dev 	= procfs[i].dev;
 			ip->flags 	= procfs[i].flags;
@@ -109,6 +110,7 @@ procfsiread(struct inode* dp, struct inode *ip) {
 		}
 
 		for (j = 0; j < 5; j++) {
+			// Copy actions file inum
 			if (pidinodes[i][j].inum == ip->inum) {
 				switch(j) {
 					case CWD:
@@ -159,6 +161,7 @@ procfsiread(struct inode* dp, struct inode *ip) {
 		}
 
 		for (j = 0; j < NOFILE; j++) {
+			// Copy fdinfo file inum
 			if (fdnodes[i][j].inum == ip->inum) {
 				ip->dev 	= fdnodes[i][j].dev;
 				ip->flags 	= fdnodes[i][j].flags;
@@ -193,6 +196,7 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 	int fds[NOFILE];
 
 	n = sizeof(struct dirent);
+	// Builds inums for procs dirs
 	if (ip->minor == PROCDIR) {
 		cleanInodes();
 		getpids(pids);
@@ -214,12 +218,14 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 
 		i = off / n;
 
+		// If offset is in bounds then returns the dirent
 		if (i < nonZeroPids) {
 			((struct dirent*)dst)->inum = procfs[i].inum;
 			getPidName(pids[i], ((struct dirent*)dst)->name);
 			ret = n;
 		}
 	} else if (ip->minor == PIDDIR) {
+		// Builds inums for actions files
 		for (i = 0; i < NPROC; i++) {
 			pid = procfs[i].inum - INUMPROC;
 			if (ip->inum == procfs[i].inum) {
@@ -229,6 +235,7 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 					pidinodes[i][j].flags = 0 | I_VALID;
 					pidinodes[i][j].type = T_DEV;
 					pidinodes[i][j].major = PROCFS;
+					// fdinfo is a special annoying dir
 					if (j == FDINFO) {
 						pidinodes[i][j].minor = FDDIR;
 					} else {
@@ -244,6 +251,7 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 				if (j < 5) {
 					((struct dirent*)dst)->inum = pidinodes[i][j].inum;
 
+					// Name is different for each file
 					switch(j) {
 						case CMDLINE:
 							strncpy(((struct dirent*)dst)->name, cmdline_str, DIRSIZ);
@@ -269,6 +277,7 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 			}
 		}
 	} else if (ip->minor == FDDIR) {
+		// Builds fdinfo files inums
 		pid = (ip->inum - INUMPID)/10;
 		for (i = 0; i < NPROC; i++) {
 			if (pid == procfs[i].inum - INUMPROC) {
@@ -302,6 +311,7 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 			}
 		}
 	} else if (ip->minor == FDFILE) {
+		// Returns the fdinfo file data
 		pid = (ip->inum - INUMFILE)/10;
 		for (i = 0; i < NPROC; i++) {
 			if (pid == procfs[i].inum - INUMPROC) {
@@ -320,6 +330,7 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 		}
 
 	} else if (ip->minor == FILE) {
+		// Returns data according to action file
 		getFileName(ip->inum, filename);
 		pid = (ip->inum - INUMPID)/10;
 
