@@ -21,6 +21,8 @@
 
 enum pidfiles { CMDLINE, CWD, EXE, FDINFO, STATUS };
 
+extern struct inode* iget2(uint, uint);
+
 static struct inode procfs[NPROC];
 static struct inode pidinodes[NPROC][5];
 static struct dirent dirents[DIRENTSIZE];
@@ -80,7 +82,9 @@ procfsisdir(struct inode *ip) {
 
 void 
 procfsiread(struct inode* dp, struct inode *ip) {
-	int i, j;
+	int i, j, pid;
+	struct inode* ip2;
+	char exepath[100];
 
 	for (i = 0; i < NPROC; i++) {
 		if (procfs[i].inum == ip->inum) {
@@ -91,19 +95,56 @@ procfsiread(struct inode* dp, struct inode *ip) {
 			ip->minor 	= procfs[i].minor;
 			ip->size 	= procfs[i].size;
 
-			break;
+			return;
 		}
 
 		for (j = 0; j < 5; j++) {
 			if (pidinodes[i][j].inum == ip->inum) {
-				ip->dev 	= pidinodes[i][j].dev;
-				ip->flags 	= pidinodes[i][j].flags;
-				ip->type 	= pidinodes[i][j].type;
-				ip->major 	= pidinodes[i][j].major;
-				ip->minor 	= pidinodes[i][j].minor;
-				ip->size 	= pidinodes[i][j].size;
+				switch(j) {
+					case CWD:
+						pid = (ip->inum - INUMPID)/10;
+						ip2 = iget2(ROOTDEV, getcwd(pid));
+						
+						ip->inum 	= ip2->inum;
+						ip->dev 	= ip2->dev;
+						ip->flags 	= ip2->flags;
+						ip->ref		= ip2->ref;
+						ip->type 	= ip2->type;
+						ip->major 	= ip2->major;
+						ip->minor 	= ip2->minor;
+						ip->size 	= ip2->size;
+						memmove(ip->addrs, ip2->addrs, NDIRECT+1);
 
-				break;
+						break;
+
+					case EXE:
+						pid = (ip->inum - INUMPID)/10;
+						getexe(pid, exepath);
+						ip2 = namei(exepath);
+
+						ip->inum 	= ip2->inum;
+						ip->dev 	= ip2->dev;
+						ip->flags 	= ip2->flags;
+						ip->ref		= ip2->ref;
+						ip->type 	= ip2->type;
+						ip->major 	= ip2->major;
+						ip->minor 	= ip2->minor;
+						ip->size 	= ip2->size;
+						memmove(ip->addrs, ip2->addrs, NDIRECT+1);
+
+						break;
+
+					default:
+						ip->dev 	= pidinodes[i][j].dev;
+						ip->flags 	= pidinodes[i][j].flags;
+						ip->type 	= pidinodes[i][j].type;
+						ip->major 	= pidinodes[i][j].major;
+						ip->minor 	= pidinodes[i][j].minor;
+						ip->size 	= pidinodes[i][j].size;
+				}
+
+				return;
+			
 			}
 		}
 	}
@@ -126,7 +167,6 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 	char file[500];
 	int pid;
 	int filelength;
-	//struct dirent cwddirent;
 
 	n = sizeof(struct dirent);
 	if (ip->minor == PROCDIR) {
@@ -157,10 +197,11 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 		}
 	} else if (ip->minor == PIDDIR) {
 		for (i = 0; i < NPROC; i++) {
+			pid = procfs[i].inum - INUMPROC;
 			if (ip->inum == procfs[i].inum) {
 				for (j = 0; j < 5; j++) {
 					pidinodes[i][j].dev = PROCFS;
-					pidinodes[i][j].inum = (procfs[i].inum - INUMPROC)*10 + INUMPID + j;
+					pidinodes[i][j].inum = pid*10 + INUMPID + j;
 					pidinodes[i][j].flags = 0 | I_VALID;
 					pidinodes[i][j].type = T_DEV;
 					pidinodes[i][j].major = PROCFS;
@@ -212,13 +253,19 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 				ret = n;
 			}
 		} else if (strncmp(filename, cwd_str, DIRSIZ) == 0) {
-			((struct dirent*)dst)->inum = getcwd(pid);
+
+			((struct dirent*)dst)->inum = ip->inum;
 			strncpy(((struct dirent*)dst)->name, cwd_str, DIRSIZ);
+
 		} else if (strncmp(filename, exe_str, DIRSIZ) == 0) {
+
+			((struct dirent*)dst)->inum = ip->inum;
+			strncpy(((struct dirent*)dst)->name, exe_str, DIRSIZ);
+
 		} else if (strncmp(filename, fdinfo_str, DIRSIZ) == 0) {
+			
 		} else if (strncmp(filename, status_str, DIRSIZ) == 0) {
 			getstatus(pid, file);
-			//cprintf("%s\n", file);
 
 			filelength = strlen(file);
 			if (off < filelength) {

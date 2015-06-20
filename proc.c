@@ -58,11 +58,17 @@ void strcopy(char* des, char* src){
 void addToCharArray(char* dst, char* src, int from, int size) {
   int i;
   int j = 0;
-  for(i = from; i < from + size; i++) {
-    dst[i] = src[j];
-    j++;
+
+  for (i = from; i < from + size; i++) {
+    dst[i] = 32;
   }
-  //dst[++i] = '\0';
+
+  i = from;
+
+  for(j = 0; j < size; j++) {
+    dst[i] = src[j];
+    i++;
+  }
 }
 
 void
@@ -112,7 +118,8 @@ getcwd(int pid) {
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if (p->pid == pid) {
-      p->cwd->flags = p->cwd->flags & !I_VALID;
+      p->cwd->flags = 0;
+      p->cwd->dev = 2;
       ret = p->cwd->inum;
       break;
     }
@@ -126,49 +133,48 @@ getcwd(int pid) {
 void
 getstatus(int pid, char* status) {
   struct proc *p;
-  char unused[10] = "UNUSED\n";
-  char embryo[10] = "EMBRYO\n";
-  char sleeping[10] = "SLEEPING\n";
-  char runnable[10] = "RUNNABLE\n";
-  char running[10] = "RUNNING\n";
-  char zombie[10] = "ZOMBIE\n";
-  char runstate[21] = "Process run state: ";
-  char memory[23] = "Process memory usage: ";
+  char unused[10] = "UNUSED ";
+  char embryo[10] = "EMBRYO ";
+  char sleeping[10] = "SLEEPING ";
+  char runnable[10] = "RUNNABLE ";
+  char running[10] = "RUNNING ";
+  char zombie[10] = "ZOMBIE ";
   char buf[DIRSIZ];
+  int i;
+
+  for (i = 0; i < DIRSIZ+10; i++) {
+    status[i] = 32;
+  }
 
   acquire(&ptable.lock);
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if (p->pid == pid) {
-      addToCharArray(status, runstate, 0, 21);
-      cprintf("%s\n", status);
       switch(p->state) {
         case UNUSED:
-          addToCharArray(status, unused, 21, 10);
+          addToCharArray(status, unused, 0, 7);
           break;
         case EMBRYO:
-          addToCharArray(status, embryo, 21, 10);
+          addToCharArray(status, embryo, 0, 7);
           break;
         case SLEEPING:
-          addToCharArray(status, sleeping, 21, 10);
+          addToCharArray(status, sleeping, 0, 9);
           break;
         case RUNNABLE:
-          addToCharArray(status, runnable, 21, 10);
+          addToCharArray(status, runnable, 0, 9);
           break;
         case RUNNING:
-          addToCharArray(status, running, 21, 10);
+          addToCharArray(status, running, 0, 8);
           break;
         case ZOMBIE:
-          addToCharArray(status, zombie, 21, 10);
+          addToCharArray(status, zombie, 0, 7);
           break;
       }
-      cprintf("%s\n", status);
-      
-      addToCharArray(status, memory, 31, 23);
-      cprintf("%s\n", status);
       intToChararray(p->sz, buf);
-      addToCharArray(status, buf, 54, DIRSIZ);
-      cprintf("%s\n", status);
+      addToCharArray(status, buf, 10, DIRSIZ);
+
+      release(&ptable.lock);
+      return;
     }
   }
 
