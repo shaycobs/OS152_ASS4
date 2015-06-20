@@ -171,7 +171,9 @@ getstatus(int pid, char* status) {
           break;
       }
       intToChararray(p->sz, buf);
-      addToCharArray(status, buf, 10, DIRSIZ);
+      addToCharArray(status, buf, 10, strlen(buf));
+      status[11 + strlen(buf)] = '\n';
+      status[12 + strlen(buf)] = '\0';
 
       release(&ptable.lock);
       return;
@@ -216,7 +218,7 @@ getfdinfo(int pid, int fd, char* info) {
   char none[5] = "NONE ";
 
 
-  for (i = 0; i < 12; i++) {
+  for (i = 0; i < 50; i++) {
     info[i] = 32;
   }
 
@@ -238,10 +240,24 @@ getfdinfo(int pid, int fd, char* info) {
       }
 
       intToChararray(p->ofile[fd]->off, buf);
-      addToCharArray(info, buf, 6, DIRSIZ);
+      addToCharArray(info, buf, 6, strlen(buf));
 
-      info[8] = p->ofile[fd]->readable;
-      info[10] = p->ofile[fd]->writable;
+      if (p->ofile[fd]->readable) {
+        info[7 + strlen(buf)] = '1';
+      } else {
+        info[7 + strlen(buf)] = '0';
+      }
+
+      if (p->ofile[fd]->writable) {
+        info[9 + strlen(buf)] = '1';
+      } else {
+        info[9 + strlen(buf)] = '0';
+      }
+
+      info[10 + strlen(buf)] = '\n';
+      info[11 + strlen(buf)] = '\0';
+      //addToCharArray(info, &p->ofile[fd]->readable, 7 + strlen(buf), 1);
+      //addToCharArray(info, &p->ofile[fd]->writable, 9 + strlen(buf), 1);
 
       release(&ptable.lock);
       return;
