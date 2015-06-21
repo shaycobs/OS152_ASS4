@@ -566,6 +566,7 @@ dirlookup(struct inode *dp, char *name, uint *poff)
       if (!(ip->flags & I_VALID) && dp->type == T_DEV && devsw[dp->major].iread) {
         devsw[dp->major].iread(dp, ip);
       }
+      cprintf("after iread ip inum: %d\n", ip->inum);
       return ip;
     }
   }

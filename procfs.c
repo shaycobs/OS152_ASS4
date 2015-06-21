@@ -26,13 +26,13 @@ enum pidfiles { CMDLINE, CWD, EXE, FDINFO, STATUS };
 extern struct inode* iget2(uint, uint);
 
 // Procs inodes
-static struct inode procfs[NPROC];
+static struct inode procfs[NPROC+2];
 
 // inner procs inodes
-static struct inode pidinodes[NPROC][5];
+static struct inode pidinodes[NPROC][7];
 
 // fd inodes
-static struct inode fdnodes[NPROC][NOFILE];
+static struct inode fdnodes[NPROC][NOFILE+2];
 
 // dirents
 static struct dirent dirents[DIRENTSIZE];
@@ -96,7 +96,7 @@ procfsiread(struct inode* dp, struct inode *ip) {
 	struct inode* ip2;
 	char exepath[100];
 
-	for (i = 0; i < NPROC; i++) {
+	for (i = 2; i < NPROC+2; i++) {
 		// Copy proc dir inum
 		if (procfs[i].inum == ip->inum) {
 			ip->dev 	= procfs[i].dev;
@@ -109,10 +109,11 @@ procfsiread(struct inode* dp, struct inode *ip) {
 			return;
 		}
 
-		for (j = 0; j < 5; j++) {
+		for (j = 0; j < 7; j++) {
 			// Copy actions file inum
 			if (pidinodes[i][j].inum == ip->inum) {
-				switch(j) {
+				cprintf("iread inum: %d\n", ip->inum);
+				switch(j-2) {
 					case CWD:
 						pid = (ip->inum - INUMPID)/10;
 						ip2 = iget2(ROOTDEV, getcwd(pid));
@@ -147,6 +148,7 @@ procfsiread(struct inode* dp, struct inode *ip) {
 						break;
 
 					default:
+						cprintf("iread2 inum: %d\n", ip->inum);
 						ip->dev 	= pidinodes[i][j].dev;
 						ip->flags 	= pidinodes[i][j].flags;
 						ip->type 	= pidinodes[i][j].type;
@@ -160,7 +162,7 @@ procfsiread(struct inode* dp, struct inode *ip) {
 			}
 		}
 
-		for (j = 0; j < NOFILE; j++) {
+		for (j = 2; j < NOFILE+2; j++) {
 			// Copy fdinfo file inum
 			if (fdnodes[i][j].inum == ip->inum) {
 				ip->dev 	= fdnodes[i][j].dev;
@@ -180,7 +182,7 @@ int
 procfsread(struct inode *ip, char *dst, int off, int n) {
 	int pids[NPROC];
 	int i, j;
-	int nonZeroPids = 0;
+	int nonZeroPids = 2;
 	int openFiles = 0;
 	int ret = 0;
 	int direntindex = 0;
@@ -189,6 +191,8 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 	char exe_str[14] 		= "exe";
 	char fdinfo_str[14]		= "fdinfo";
 	char status_str[14] 	= "status";
+	char current[2] 		= ".";
+	char parent[3] 			= "..";
 	char filename[14];
 	char file[500];
 	int pid;
@@ -201,9 +205,18 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 		cleanInodes();
 		getpids(pids);
 
-		for (i = 0; i < NPROC; i++) {
+		procfs[0].dev 	= ip->dev;
+		procfs[0].inum 	= ip->inum;
+		procfs[0].flags = ip->flags;
+		procfs[0].type 	= ip->type;
+		procfs[0].major = ip->major;
+		procfs[0].minor = ip->minor;
+		procfs[0].size 	= ip->size;
+		procfs[0].nlink = ip->nlink;
+
+		for (i = 2; i < NPROC+2; i++) {
 			procfs[i].dev = PROCFS;
-			procfs[i].inum = pids[i] + INUMPROC;
+			procfs[i].inum = pids[i-2] + INUMPROC;
 			procfs[i].flags = 0 | I_VALID;
 			procfs[i].type = T_DEV;
 			procfs[i].major = PROCFS;
@@ -211,7 +224,7 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 			procfs[i].size = 5 * n;
 			procfs[i].nlink = 0;
 
-			if (pids[i] != 0)
+			if (pids[i-2] != 0)
 				nonZeroPids++;
 		}
 		ip->nlink++;
@@ -219,17 +232,31 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 		i = off / n;
 
 		// If offset is in bounds then returns the dirent
-		if (i < nonZeroPids) {
+		if (i == 0) { // .
+			((struct dirent*)dst)->inum = ip->inum;
+			strncpy(((struct dirent*)dst)->name, current, DIRSIZ);
+			ret = n;
+		} else if (i == 1) { // ..
+			((struct dirent*)dst)->inum = ROOTINO;
+			strncpy(((struct dirent*)dst)->name, parent, DIRSIZ);
+			ret = n;
+		} else if (i < nonZeroPids) {
 			((struct dirent*)dst)->inum = procfs[i].inum;
-			getPidName(pids[i], ((struct dirent*)dst)->name);
+			getPidName(pids[i-2], ((struct dirent*)dst)->name);
 			ret = n;
 		}
 	} else if (ip->minor == PIDDIR) {
 		// Builds inums for actions files
-		for (i = 0; i < NPROC; i++) {
+		for (i = 2; i < NPROC+2; i++) {
 			pid = procfs[i].inum - INUMPROC;
 			if (ip->inum == procfs[i].inum) {
-				for (j = 0; j < 5; j++) {
+				// .
+				pidinodes[i][0] = procfs[i];
+
+				// ..
+				pidinodes[i][1] = procfs[0];
+
+				for (j = 2; j < 7; j++) {
 					pidinodes[i][j].dev = PROCFS;
 					pidinodes[i][j].inum = pid*10 + INUMPID + j;
 					pidinodes[i][j].flags = 0 | I_VALID;
@@ -248,25 +275,33 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 				ip->nlink++;
 				j = off / n;
 
-				if (j < 5) {
+				if (j < 7) {
 					((struct dirent*)dst)->inum = pidinodes[i][j].inum;
 
-					// Name is different for each file
-					switch(j) {
-						case CMDLINE:
-							strncpy(((struct dirent*)dst)->name, cmdline_str, DIRSIZ);
-							break;
-						case CWD:
-							strncpy(((struct dirent*)dst)->name, cwd_str, DIRSIZ);
-							break;
-						case EXE:
-							strncpy(((struct dirent*)dst)->name, exe_str, DIRSIZ);
-							break;
-						case FDINFO:
-							strncpy(((struct dirent*)dst)->name, fdinfo_str, DIRSIZ);
-							break;
-						case STATUS:
-							strncpy(((struct dirent*)dst)->name, status_str, DIRSIZ);
+					if (j == 0) { // .
+						strncpy(((struct dirent*)dst)->name, current, DIRSIZ);
+						ret = n;
+					} else if (j == 1) { // ..
+						strncpy(((struct dirent*)dst)->name, parent, DIRSIZ);
+						ret = n;
+					} else {
+						// Name is different for each file
+						switch(j-2) {
+							case CMDLINE:
+								strncpy(((struct dirent*)dst)->name, cmdline_str, DIRSIZ);
+								break;
+							case CWD:
+								strncpy(((struct dirent*)dst)->name, cwd_str, DIRSIZ);
+								break;
+							case EXE:
+								strncpy(((struct dirent*)dst)->name, exe_str, DIRSIZ);
+								break;
+							case FDINFO:
+								strncpy(((struct dirent*)dst)->name, fdinfo_str, DIRSIZ);
+								break;
+							case STATUS:
+								strncpy(((struct dirent*)dst)->name, status_str, DIRSIZ);
+						}
 					}
 
 					dirents[direntindex].inum = ((struct dirent*)dst)->inum;
@@ -279,7 +314,7 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 	} else if (ip->minor == FDDIR) {
 		// Builds fdinfo files inums
 		pid = (ip->inum - INUMPID)/10;
-		for (i = 0; i < NPROC; i++) {
+		for (i = 2; i < NPROC+2; i++) {
 			if (pid == procfs[i].inum - INUMPROC) {
 				getfds(pid, fds);
 				for (j = 0; j < NOFILE; j++) {
@@ -313,7 +348,7 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 	} else if (ip->minor == FDFILE) {
 		// Returns the fdinfo file data
 		pid = (ip->inum - INUMFILE)/10;
-		for (i = 0; i < NPROC; i++) {
+		for (i = 2; i < NPROC+2; i++) {
 			if (pid == procfs[i].inum - INUMPROC) {
 				for (j = 0; j < NOFILE; j++) {
 					if (fdnodes[i][j].inum == ip->inum) {
@@ -328,7 +363,6 @@ procfsread(struct inode *ip, char *dst, int off, int n) {
 				}
 			}
 		}
-
 	} else if (ip->minor == FILE) {
 		// Returns data according to action file
 		getFileName(ip->inum, filename);
